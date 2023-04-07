@@ -259,6 +259,98 @@ from table
 
 
 
+### Проверка DDL
+
+Ниже описывается структура теста для задач на DDL (CREATE, DROP, ALTER, UPDATE, DELETE) и так далее.
+
+В таком случае необходимо использовать `direct_sql_test`:
+
+```python
+import os
+import sys
+
+dirname = os.path.dirname(__file__)
+module_path = os.path.join(dirname, "..")
+sys.path.append(module_path)
+
+from AbstractTest2 import AbstractTest2, RunCode, process, wrapper
+
+CORRECT_QUERY = """
+SELECT EXISTS (
+    SELECT FROM
+        pg_tables
+    WHERE
+        schemaname = 'student_schema_name' AND
+        tablename  = 'analysis'
+    );
+"""
+
+
+class Tests(AbstractTest2):
+    def test_1(self):
+        self.direct_sql_test(
+            check_query=CORRECT_QUERY, formulation="Проверяем, что студент корректно создал таблицу"
+        )
+```
+
+В `CORRECT_QUERY` указываете запрос, который будет использоваться для проверки кода.
+
+**Важно:** Чтобы проверка прошла успешно, перед нажатием кнопки Проверить студент должен написать запрос и нажать кнопку Выполнить. В отличие от другого типа задач, здесь в момент нажатия Проверить выполнение кода студента не будет происходить - будет выполняться только `CORRECT_QUERY`.
+
+Также 2 очень важных момента:
+
+1. Результат `CORRECT_QUERY` всегда должен возвращать одно значение - `True/False`. Т.е. вы будете проверять "существует ли таблица?", "правильный ли тип данных?" и т.д. Примеры укажем ниже. По умолчанию всегда ожидается `True`!
+2. В `CORRECT_QUERY` обязательно указывайте имя схемы - каждый студент работает в своей собственной схеме. Вам не надо указывать конкретное имя, просто прописывайте `student_schema_name` - эта часть автоматически заменится на нужную схему.
+
+**Примеры автопроверок.**
+
+Проверим, существует ли таблица `analysis`:
+
+```sql
+SELECT EXISTS (
+    SELECT FROM
+        pg_tables
+    WHERE
+        schemaname = 'student_schema_name' AND
+        tablename  = 'analysis'
+    );
+```
+
+Проверим, является ли колонка `id` типом `integer`:
+
+```sql
+select distinct pg_typeof(id) = to_regtype('integer')
+from users
+```
+
+Проверим, удалил ли студент таблицы (т.е. проверяем, что такой таблицы нет в базе):
+
+```sql
+SELECT not EXISTS (
+    SELECT FROM
+        pg_tables
+    WHERE
+        schemaname = 'student_schema_name' AND
+        tablename  = 'analysis'
+);
+```
+
+Проверим, есть ли строка `14; 2021-04-24 09:36:03;	4;	19` в таблице `userentry`:
+
+```sql
+select (14, '2021-04-24 09:36:03', 4, 19)
+in (select * from userentry u)
+```
+
+Проверим, наличие констраинта `constraint_name` в таблице `users`:
+
+```sql
+select count('constraint_name') > 0
+from information_schema.constraint_column_usage
+where table_name = 'users'  and constraint_name = 'constraint_name'
+```
+
+
 ## Автотесты для других языков программирования
 
 ### Базовая структура теста
